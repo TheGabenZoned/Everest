@@ -119,6 +119,12 @@ def patch_rom(world, rom):
     # Add it to the extended object table
     add_to_extended_object_table(rom, 0x195, keyring_obj_file)
 
+    # Everest: Load physical cross-game item models into ROM
+    phys_opt = getattr(world.options, "physical_item_integration", None)
+    if phys_opt is None or phys_opt.value != 0:
+        from Everest.patcher import patch_oot_physical_items
+        patch_oot_physical_items(world, rom)
+
     # Create the textures for pots/crates. Note: No copyrighted material can be distributed w/ the randomizer. Because of this, patch files are used to create the new textures from the original texture in ROM.
     # Apply patches for custom textures for pots and crates and add as new files in rom
     # Crates are ci4 textures in the normal ROM but for pot/crate textures match contents were upgraded to ci8 to support more colors
@@ -2091,18 +2097,25 @@ def patch_rom(world, rom):
         symbol = rom.sym('CHEST_SIZE_TEXTURE')
         rom.write_int32(symbol, 0x00000001)
         # Move Ganon's Castle's Zelda's Lullaby Chest back so is reachable if large
+    def resolve_chest_item(loc):
+        if loc.item.trap:
+            looks_like_index = get_override_entry(world, loc)[5]
+            return read_rom_item(rom, looks_like_index)
+        if loc.item.game == 'Ocarina of Time':
+            return read_rom_item(rom, loc.item.index)
+        from Everest.registry import get_registry
+        phys_opt = getattr(world.options, "physical_item_integration", None)
+        if phys_opt is not None and phys_opt.value == 0:
+            idx = AP_PROGRESSION if loc.item.advancement else AP_JUNK
+        else:
+            idx = get_registry().resolve_oot_item_id(loc.item.game, loc.item.name, advancement=bool(loc.item.advancement))
+        return read_rom_item(rom, idx)
+
     if world.correct_chest_appearances == 'classic' or world.correct_chest_appearances == 'both':
         if not world.dungeon_mq['Ganons Castle']:
             chest_name = 'Ganons Castle Light Trial Lullaby Chest'
             location = world.get_location(chest_name)
-            if not location.item.trap:
-                if location.item.game == 'Ocarina of Time':
-                    item = read_rom_item(rom, location.item.index)
-                else:
-                    item = read_rom_item(rom, AP_PROGRESSION if location.item.advancement else AP_JUNK)
-            else:
-                looks_like_index = get_override_entry(world, location)[5]
-                item = read_rom_item(rom, looks_like_index)
+            item = resolve_chest_item(location)
             if item['chest_type'] in (GOLD_CHEST, GILDED_CHEST, SKULL_CHEST_BIG):
                 rom.write_int16(0x321B176, 0xFC40) # original 0xFC48
 
@@ -2111,14 +2124,7 @@ def patch_rom(world, rom):
             chest_name = 'Spirit Temple Compass Chest'
             chest_address = 0x2B6B07C
             location = world.get_location(chest_name)
-            if not location.item.trap:
-                if location.item.game == 'Ocarina of Time':
-                    item = read_rom_item(rom, location.item.index)
-                else:
-                    item = read_rom_item(rom, AP_PROGRESSION if location.item.advancement else AP_JUNK)
-            else:
-                looks_like_index = get_override_entry(world, location)[5]
-                item = read_rom_item(rom, looks_like_index)
+            item = resolve_chest_item(location)
             if item['chest_type'] in (BROWN_CHEST, SILVER_CHEST, SKULL_CHEST_SMALL):
                 rom.write_int16(chest_address + 2, 0x0190) # X pos
                 rom.write_int16(chest_address + 6, 0xFABC) # Z pos
@@ -2129,14 +2135,7 @@ def patch_rom(world, rom):
             chest_address_0 = 0x21A02D0  # Address in setup 0
             chest_address_2 = 0x21A06E4  # Address in setup 2
             location = world.get_location(chest_name)
-            if not location.item.trap:
-                if location.item.game == 'Ocarina of Time':
-                    item = read_rom_item(rom, location.item.index)
-                else:
-                    item = read_rom_item(rom, AP_PROGRESSION if location.item.advancement else AP_JUNK)
-            else:
-                looks_like_index = get_override_entry(world, location)[5]
-                item = read_rom_item(rom, looks_like_index)
+            item = resolve_chest_item(location)
             if item['chest_type'] in (BROWN_CHEST, SILVER_CHEST, SKULL_CHEST_SMALL):
                 rom.write_int16(chest_address_0 + 6, 0x0172)  # Z pos
                 rom.write_int16(chest_address_2 + 6, 0x0172)  # Z pos
@@ -2457,11 +2456,18 @@ def get_override_entry(ootworld, location):
     default = location.default
     player_id = 0 if ootworld.player == location.item.player else min(location.item.player, 255)
     if location.item.game != 'Ocarina of Time': 
-        # This is an AP sendable. It's guaranteed to not be None. 
-        if location.item.advancement:
-            item_id = AP_PROGRESSION
-        else:
+        # Everest: Physical item integration across games
+        from Everest.registry import get_registry
+        phys_opt = getattr(ootworld.options, "physical_item_integration", None)
+        phys_val = phys_opt.value if phys_opt is not None else 2  # default enabled in Everest
+        if phys_val == 0:
+            item_id = AP_PROGRESSION if location.item.advancement else AP_JUNK
+        elif phys_val == 1 and not location.item.advancement:
             item_id = AP_JUNK
+        else:
+            item_id = get_registry().resolve_oot_item_id(
+                location.item.game, location.item.name, advancement=bool(location.item.advancement)
+            )
     else: 
         item_id = location.item.index
         if None in [scene, default, item_id]:
@@ -2751,7 +2757,16 @@ def place_shop_items(rom, world, shop_items, messages, locations, init_shop_id=F
                 else:
                     rom_item = read_rom_item(rom, item_display.index)
             else:
-                display_index = AP_PROGRESSION if location.item.advancement else AP_JUNK
+                from Everest.registry import get_registry
+                phys_opt = getattr(world.options, "physical_item_integration", None)
+                if phys_opt is not None and phys_opt.value == 0:
+                    display_index = AP_PROGRESSION if location.item.advancement else AP_JUNK
+                elif phys_opt is not None and phys_opt.value == 1 and not location.item.advancement:
+                    display_index = AP_JUNK
+                else:
+                    display_index = get_registry().resolve_oot_item_id(
+                        location.item.game, location.item.name, advancement=bool(location.item.advancement)
+                    )
                 rom_item = read_rom_item(rom, display_index)
 
             shop_objs.add(rom_item['object_id'])

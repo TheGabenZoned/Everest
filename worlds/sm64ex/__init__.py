@@ -203,7 +203,7 @@ class SM64World(World):
         return "1Up Mushroom"
 
     def fill_slot_data(self):
-        return {
+        slot_data = {
             "AreaRando": self.area_connections,
             "MoveRandoVec": self.move_rando_bitvec,
             "PaintingRando": self.options.enable_locked_paintings.value,
@@ -211,6 +211,11 @@ class SM64World(World):
             "CompletionType": self.options.completion_type.value,
             **self.star_costs
         }
+        phys_opt = getattr(self.options, "physical_item_integration", None)
+        if phys_opt is None or phys_opt.value != 0:
+            from Everest.patcher import get_sm64_physical_slot_data
+            slot_data.update(get_sm64_physical_slot_data(self))
+        return slot_data
 
     def generate_output(self, output_directory: str):
         if self.multiworld.players != 1:

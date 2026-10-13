@@ -1535,6 +1535,20 @@ class DeathLink(Toggle):
     rich_text_doc = True
 
 
+class PhysicalItemIntegration(Choice):
+    """
+    Control Everest's cross-game physical item integration.
+    When enabled, foreign items (such as a Mario 64 Star in Ocarina of Time, or an OoT Sword in Mario 64)
+    render their actual in-game physical 3D model and animations instead of a generic placeholder.
+    """
+    display_name = "Physical Item Integration"
+    rich_text_doc = True
+    option_disabled = 0
+    option_progression_only = 1
+    option_enabled = 2
+    default = 2
+
+
 class ItemLinks(OptionList):
     """Share part of your item pool with other players."""
     display_name = "Item Links"
@@ -1758,6 +1772,7 @@ class PerGameCommonOptions(CommonOptions):
     priority_locations: PriorityLocations
     item_links: ItemLinks
     plando_items: PlandoItems
+    physical_item_integration: PhysicalItemIntegration
 
 
 @dataclass

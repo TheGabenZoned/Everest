@@ -782,6 +782,17 @@ class CommonContext:
         if old_tags != self.tags and self.server and not self.server.socket.closed:
             await self.send_msgs([{"cmd": "ConnectUpdate", "tags": self.tags}])
 
+    async def update_everest_physical_items(self, enabled: bool):
+        """Helper function to set Everest Physical Items connection tag on/off and update connection."""
+        from Everest.protocol import TAG_EVEREST_PHYSICAL_ITEMS
+        old_tags = self.tags.copy()
+        if enabled:
+            self.tags.add(TAG_EVEREST_PHYSICAL_ITEMS)
+        else:
+            self.tags -= {TAG_EVEREST_PHYSICAL_ITEMS}
+        if old_tags != self.tags and self.server and not self.server.socket.closed:
+            await self.send_msgs([{"cmd": "ConnectUpdate", "tags": self.tags}])
+
     def gui_error(self, title: str, text: typing.Union[Exception, str]) -> typing.Optional["kvui.MessageBox"]:
         """Displays an error messagebox in the loaded Kivy UI. Override if using a different UI framework"""
         if not self.ui:

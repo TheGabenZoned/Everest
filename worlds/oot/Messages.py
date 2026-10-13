@@ -257,6 +257,13 @@ ITEM_MESSAGES = {
     0x9003: "\x08You found a piece of the \x05\x41Triforce\x05\x40!",
     0x9097: "\x08You got an \x05\x41Archipelago item\x05\x40!\x01It seems \x05\x41important\x05\x40!",
     0x9098: "\x08You got an \x05\x43Archipelago item\x05\x40!\x01Doesn't seem like it's needed.",
+    # Everest: Physical cross-game item textboxes
+    0x90A0: "\x08\x13\x73You got a \x05\x43Mario 64 Power Star\x05\x40!\x01Its golden radiance shines bright!",
+    0x90A1: "\x08\x13\x73You got a \x05\x421-Up Mushroom\x05\x40!\x01An extra chance at life!",
+    0x90A2: "\x08\x13\x74You got a \x05\x41Bowser Key\x05\x40!\x01It unlocks a door in another world!",
+    0x90A3: "\x08\x13\x73You got a \x05\x44Special Cap\x05\x40!\x01Power flows through the fabric!",
+    0x90A4: "\x08\x13\x73You got a \x05\x45Morph Ball\x05\x40!\x01Rolling into tight spaces!",
+    0x90A5: "\x08\x13\x73You got an \x05\x41Ancient Blade\x05\x40!\x01The legendary sword of evil's bane!",
 }
 
 KEYSANITY_MESSAGES = {
